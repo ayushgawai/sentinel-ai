@@ -35,7 +35,7 @@ from contracts import (
     incident_to_dict,
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
-from services.brain.call_brief import assemble_call_brief, scene_facts
+from services.brain.call_brief import assemble_call_brief
 from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services import activity, usage
 from services.brain.muse_client import MuseClient
@@ -442,7 +442,6 @@ class SiteHub:
         note = str(payload.get("note") or "").strip()[:500]
         self._incident_seq += 1
         now = _utcnow()
-        facts = scene_facts(camera_id)
         rec = IncidentRecord(
             incident_id=f"INC-{self._incident_seq:04d}",
             track_id="T-1",
@@ -455,7 +454,7 @@ class SiteHub:
             severity=severity,
             description=note or "Reported by operator",
             location_text="",
-            person_description=str(facts.get("person_description") or "Unknown"),
+            person_description="Not yet described",
             state=IncidentState.ALERTED,
             clip_uri="",
             created_at=now,
@@ -550,7 +549,7 @@ class SiteHub:
                 router_score=0.88 if cls is not IncidentClass.BENIGN else 0.12,
                 rules_fired=[f"scenario:{key}"],
                 class_token_forced=cls,
-                allow_placeholder_thresholds=True,
+                allow_default_thresholds=True,
                 location_text=f"drill · {cam}",
                 person_description="Adult, drill scenario.",
             ),

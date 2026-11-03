@@ -26,12 +26,7 @@
       "cross_streets": [],
       "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
       "scene_facts": {
-        "subject_count": 1,
         "spoken_location": "the ground-floor lobby",
-        "person_description": "Adult in dark clothing carrying a visible long firearm",
-        "visible_weapon": "long firearm",
-        "current_observation": "Person 1 is entering the ground-floor lobby with a visible long firearm",
-        "direction": "moving from the lobby toward the east corridor",
         "unknowns": [
           "identity",
           "intent",
@@ -77,12 +72,7 @@
       "cross_streets": [],
       "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
       "scene_facts": {
-        "subject_count": 1,
         "spoken_location": "the east corridor",
-        "person_description": "Adult in dark clothing carrying a visible long firearm",
-        "visible_weapon": "long firearm",
-        "current_observation": "Person 1 is moving through the east corridor with a visible long firearm",
-        "direction": "moving toward the west corridor",
         "unknowns": [
           "identity",
           "intent",
@@ -128,12 +118,7 @@
       "cross_streets": [],
       "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
       "scene_facts": {
-        "subject_count": 1,
         "spoken_location": "the west corridor near the stairwell",
-        "person_description": "Adult in dark clothing carrying a visible long firearm",
-        "visible_weapon": "long firearm",
-        "current_observation": "Person 1 is moving through the west corridor near the stairwell with a visible long firearm",
-        "direction": "current direction is not confirmed",
         "unknowns": [
           "identity",
           "intent",

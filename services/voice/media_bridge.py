@@ -21,7 +21,7 @@ Inbound audio (the dispatcher's real speech) is decoded, closed after 500 ms
 of silence, sent serially to the ASR service (CS_PARAKEET_URL)
 for transcription, and published back as a CallTranscriptDelta(speaker=
 "dispatcher", ...) so it lands on the dashboard the same way as any transcript line
-would. If CS_PARAKEET_URL is unset the stub returns "" and nothing is
+would. If CS_PARAKEET_URL is unset the client returns "" and nothing is
 published — silent, not broken.
 
 No third-party deps: audio conversion uses stdlib `audioop`.
@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
 try:
-    import audioop  # deprecated 3.11+, removed in 3.13 — fine on this box's 3.12
+    import audioop  # deprecated 3.11+, removed in 3.13 — fine on Python 3.12
 except ImportError:  # pragma: no cover — degrade to silent rather than crash
     audioop = None  # type: ignore[assignment]
 

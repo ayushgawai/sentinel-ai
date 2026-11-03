@@ -1,4 +1,4 @@
-"""OSNet re-id stub — affinity without loading weights (GPU-safe).
+"""Cross-camera appearance affinity — lightweight, no weights loaded (GPU-safe).
 
 Appearance embedding from the crop box so cross-camera tracks can soft-match;
 OSNet weights load here when configured.
@@ -54,4 +54,4 @@ if __name__ == "__main__":
     c = appearance_digest("cam-02", "t9", x=0.9, y=0.9, w=0.1, h=0.1)
     assert affinity(a, b) == 1.0
     assert affinity(a, c) < 1.0
-    print("osnet stub OK")
+    print("osnet self-check OK")

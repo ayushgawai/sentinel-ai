@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local Kokoro TTS serve — matches services/voice/kokoro.py's StubKokoro contract.
+"""Local Kokoro TTS serve — matches services/voice/kokoro.py's KokoroClient contract.
 
   POST /synthesize   body: {"text": "..."}
                       reply: raw bytes, PCM16 mono 16kHz (no header, no JSON)
@@ -11,9 +11,8 @@ away from the process actually serving the live wall):
 
 Then set CS_KOKORO_URL=http://127.0.0.1:8092/synthesize in .env.
 
-CPU only, on purpose — this box already runs Muse + YOLO on the one GPU for
-the live wall; Kokoro-82M is small enough that CPU
-is fine (measured ~1.7s to generate a short sentence, one-time ~6s pipeline
+CPU only, on purpose — the GPU belongs to the vision process (YOLO + CLIP);
+Kokoro-82M is small enough that CPU is fine (measured ~1.7s to generate a short sentence, one-time ~6s pipeline
 load at startup, not per request).
 """
 

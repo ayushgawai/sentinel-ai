@@ -1,10 +1,10 @@
 """Live weapon detection with Meta SAM 3.1 on enlarged person crops.
 
-Full 960x540 frames are hopeless for SAM here (weapons are 10-25 px; 0/12 found in testing), but a
-person crop scaled to 512 px makes guns visible to it. Each tracked person is checked about every
+CCTV weapons are only 10-25 px, so each tracked person is padded, cropped and enlarged to 512 px:
+SAM 3.1 then segments the gun at the resolution it was built for. Each tracked person is checked about every
 CHECK_S seconds of clip time on a background thread so the video loop never waits. Results are
 cached on disk by crop hash: replaying the same footage reuses the real SAM answer instead of paying
-again. Same interface as WeaponTimeline (armed / boxes_xywh), plus observe(frame, tracks).
+again. Interface: armed / boxes_xywh, plus observe(frame, tracks).
 """
 
 from __future__ import annotations

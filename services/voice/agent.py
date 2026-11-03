@@ -130,6 +130,7 @@ class VoiceAgent:
         # camera_id -> (people, armed) from the latest overlay.boxes.
         self._counts: dict[str, tuple[int, int]] = {}
         self._update_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
+        self._prev_place = ""
 
     def busy(self) -> bool:
         return self._live or (self._task is not None and not self._task.done())
@@ -280,11 +281,16 @@ class VoiceAgent:
         ):
             answer = "They aren't visible, so I can't verify that now."
         elif any(word in q for word in ("weapon", "gun", "firearm")):
-            answer = f"The cameras show a visible {facts.get('visible_weapon', 'weapon')}."
+            answer = "The cameras show the person carrying a visible weapon."
         elif any(word in q for word in ("hurt", "injur", "medical", "conscious", "breath", "pulse")):
             answer = "I can't verify their medical condition from this camera."
         elif any(word in q for word in ("direction", "travel", "going", "headed")):
-            answer = f"The person is {facts.get('direction', 'moving in an unconfirmed direction')}."
+            here = facts.get("spoken_location") or "the current camera"
+            answer = (
+                f"They moved from {self._prev_place} to {here}."
+                if self._prev_place
+                else f"They're in {here}; I can't confirm their direction yet."
+            )
         elif any(word in q for word in ("describe", "description", "wearing", "clothing", "look like")):
             answer = f"The person appears to be {self._person.rstrip('.').lower()}."
         elif any(word in q for word in ("how many", "count", "number of")):
@@ -375,6 +381,7 @@ class VoiceAgent:
         self._incident_id = None
 
     async def _publish_update(self, camera_id: str, address: str) -> None:
+        self._prev_place = str(scene_facts(self._camera).get("spoken_location") or "")
         self._camera = camera_id
         self._address = address
         self._visible = True

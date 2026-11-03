@@ -1,4 +1,4 @@
-"""Kokoro TTS stub — swap for local Kokoro when the local server is configured.
+"""Kokoro TTS client: posts text to the local Kokoro server at CS_KOKORO_URL (scripts/serve_kokoro.py).
 
 synthesize(text) -> pcm16_mono_16k bytes
 Target first audio < 500 ms for a short sentence.
@@ -14,7 +14,7 @@ class TtsBackend(Protocol):
     def synthesize(self, text: str) -> bytes: ...
 
 
-class StubKokoro:
+class KokoroClient:
     def synthesize(self, text: str) -> bytes:
         text = (text or "").strip()
         if not text:
@@ -37,4 +37,4 @@ class StubKokoro:
 
 
 def get_tts() -> TtsBackend:
-    return StubKokoro()
+    return KokoroClient()

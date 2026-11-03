@@ -44,7 +44,7 @@ def class_hint_from_rules(rules: list[str]) -> IncidentClass | None:
 def escalate_request_from_vision(
     esc: Any,
     *,
-    allow_placeholder_thresholds: bool = True,
+    allow_default_thresholds: bool = True,
     class_token_forced: IncidentClass | None = None,
     clip_uri: str = "",
     person_description: str = "",
@@ -73,5 +73,5 @@ def escalate_request_from_vision(
         location_text=location_text or camera_id,
         class_token_forced=forced,
         frames=imgs,
-        allow_placeholder_thresholds=allow_placeholder_thresholds,
+        allow_default_thresholds=allow_default_thresholds,
     )

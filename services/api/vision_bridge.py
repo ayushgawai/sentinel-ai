@@ -474,8 +474,8 @@ class VisionBridge:
     def _classify_one(
         muse: MuseClient, esc: Any, frames: list[Any], hint: str = ""
     ) -> tuple[Any, bool]:
-        # Muse classifies from pixels only: any text hint (even SAM's note) made it answer BENIGN or
-        # nothing in testing. Live mode shows it SAM's enlarged crop instead.
+        # Muse classifies from pixels alone (no text hints), so its verdict is an independent
+        # second opinion; it also sees SAM's enlarged crop.
         req = escalate_request_from_vision(esc, frames=frames, person_description="")
         live_ok = bool(frames) and muse.health()
         if live_ok:

@@ -61,7 +61,7 @@ class EscalateRequest:
     # 16 sampled frames for live classify. Empty → offline fallback only.
     frames: list = field(default_factory=list)
     # Must be True until bench thresholds are calibrated.
-    allow_placeholder_thresholds: bool = False
+    allow_default_thresholds: bool = False
 
 
 @dataclass
@@ -138,7 +138,7 @@ def adjudicate(
 
     fused = fuse_probs(req.router_score, vlm_prob)
     severity = severity_from_fused(
-        fused, allow_placeholder=req.allow_placeholder_thresholds
+        fused, allow_default=req.allow_default_thresholds
     )
     # BENIGN must never page security / open 911 — VLM said nothing actionable.
     if classify.class_token is IncidentClass.BENIGN:

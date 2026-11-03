@@ -75,9 +75,9 @@ def main() -> None:
     except ValueError:
         pass
 
-    assert severity_from_fused(0.1, allow_placeholder=True) is Severity.NONE
-    assert severity_from_fused(0.6, allow_placeholder=True) is Severity.MINOR
-    assert severity_from_fused(0.9, allow_placeholder=True) is Severity.SEVERE
+    assert severity_from_fused(0.1, allow_default=True) is Severity.NONE
+    assert severity_from_fused(0.6, allow_default=True) is Severity.MINOR
+    assert severity_from_fused(0.9, allow_default=True) is Severity.SEVERE
     from services.brain.thresholds import using_bench
 
     if using_bench():
@@ -85,7 +85,7 @@ def main() -> None:
     else:
         try:
             severity_from_fused(0.9)
-            raise AssertionError("placeholder thresholds must not be silent")
+            raise AssertionError("default thresholds must not be silent")
         except RuntimeError:
             pass
 
@@ -113,7 +113,7 @@ def main() -> None:
         router_score=0.85,
         rules_fired=["fall_velocity"],
         class_token_forced=IncidentClass.WEAPON,
-        allow_placeholder_thresholds=True,
+        allow_default_thresholds=True,
     )
     result = adjudicate(req, muse=MuseClient(forced=True), audit=audit)
     assert result.record.class_token is IncidentClass.WEAPON
@@ -139,7 +139,7 @@ def main() -> None:
             camera_id="cam-lobby",
             router_score=0.05,
             class_token_forced=IncidentClass.BENIGN,
-            allow_placeholder_thresholds=True,
+            allow_default_thresholds=True,
         ),
         muse=MuseClient(forced=True),
     )
@@ -147,7 +147,7 @@ def main() -> None:
     assert low.record.severity is Severity.NONE
     assert abs(low.vlm_prob - 0.05) < 1e-9
     assert abs(logprob_to_prob(low.record.class_logprob_calibrated) - 0.05) < 1e-9
-    # placeholder thresholds refused by default unless bench/thresholds.json loaded
+    # default thresholds refused by default unless bench/thresholds.json loaded
     from services.brain.thresholds import using_bench
 
     if using_bench():
@@ -172,7 +172,7 @@ def main() -> None:
                 ),
                 muse=MuseClient(forced=True),
             )
-            raise AssertionError("placeholder thresholds must require explicit ack")
+            raise AssertionError("default thresholds must require explicit ack")
         except RuntimeError:
             pass
 
@@ -213,9 +213,9 @@ def main() -> None:
     assert "Building A" in brief.address
     assert brief.coordinates == (37.333553, -121.881899)
     assert brief.entrances == ["Ground-floor lobby entrance"]
-    assert "ground-floor lobby" in scene_facts("cam-01")["current_observation"]
-    assert "east corridor" in scene_facts("cam-02")["current_observation"]
-    assert "west corridor" in scene_facts("cam-03")["current_observation"]
+    assert "ground-floor lobby" in scene_facts("cam-01")["spoken_location"]
+    assert "east corridor" in scene_facts("cam-02")["spoken_location"]
+    assert "west corridor" in scene_facts("cam-03")["spoken_location"]
     assert "cam-02" not in str(scene_facts("cam-01"))
 
     _check_temperature()

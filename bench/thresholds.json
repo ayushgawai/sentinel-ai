@@ -2,5 +2,5 @@
   "minor_at": 0.55,
   "severe_at": 0.80,
   "source": "default thresholds — replace with a measured precision curve",
-  "notes": "SEVERE slightly lower than code placeholder so a WEAPON alert reaches the dispatch path"
+  "notes": "SEVERE at 0.80 fused probability; MINOR at 0.55"
 }

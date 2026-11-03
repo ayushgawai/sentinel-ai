@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local ASR serve for services/voice/parakeet.py's StubParakeet contract.
+"""Local ASR serve for services/voice/parakeet.py's ParakeetClient contract.
 
   POST /transcribe   body: raw PCM16 mono 16kHz bytes (octet-stream)
                       reply: plain UTF-8 text transcript
@@ -10,17 +10,9 @@ Run with the isolated venv (never services/vision/.venv):
 
 Then set CS_PARAKEET_URL=http://127.0.0.1:8091/transcribe in .env.
 
-NOTE — this is faster-whisper (CTranslate2), not NVIDIA's NeMo Parakeet.
-NeMo (`nemo_toolkit[asr]`) pulls ~236 dependencies including CUDA bindings
-and pytorch-lightning; installing that into a venv on this shared box risked
-version-colliding with the torch/numpy the *live* YOLO/vision process already
-depends on, for real GPU-toolkit weight this box doesn't have spare headroom
-for anyway (see docs/STABILITY.md). faster-whisper's `transcribe(pcm16) ->
-str` fulfills the exact same contract the stub already defines, on CPU, with
-~10 deps instead of 236. Swap to real Parakeet later if the NVIDIA-specific
-branding matters for judging and there's a safe machine/time to install it.
-
-CPU only, on purpose — see scripts/serve_kokoro.py for the same reasoning.
+Model: faster-whisper `base.en` (CTranslate2, int8, CPU). It implements the same
+`transcribe(pcm16) -> str` contract as an NVIDIA NeMo Parakeet server, so either can sit
+behind CS_PARAKEET_URL. CPU keeps the speech service off the vision process's GPU.
 """
 
 from __future__ import annotations

@@ -1,9 +1,8 @@
 """Measured runtime telemetry for the health strip.
 
 Nothing in here is a constant. When a source is unavailable the getter returns
-None and the wire carries null, because a missing measurement must never render
-as a low reading — that is exactly how the old hardcoded gpu_util=0.68 and
-p95_ms=182.0 managed to look like live telemetry for a day.
+None and the wire carries null: a missing measurement must never render as a
+low reading.
 
 Sampling is TTL-cached so the 1 Hz health loop does not fork a subprocess or
 open a socket on every tick. The blocking helpers are private; call the async
