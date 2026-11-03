@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel AI · Operator Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 28 10v12L16 29 4 22V10z' fill='none' stroke='%23ff4b2b' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23ff4b2b'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="edge" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="#/live" aria-label="Sentinel AI">
+    <svg viewBox="0 0 32 32" class="brand-mark"><path d="M16 3 28 10v12L16 29 4 22V10z"/><circle cx="16" cy="16" r="4"/><path d="M16 9v3M16 20v3M9 16h3M20 16h3" class="tick"/></svg>
+    <span class="brand-word">SENTINEL</span><span class="brand-ai">AI</span>
+  </a>
+  <nav class="tabs" id="tabs">
+    <a href="#/live" data-route="live"><i>01</i>Live Ops</a>
+    <a href="#/evidence" data-route="evidence"><i>02</i>Evidence</a>
+    <a href="#/call" data-route="call"><i>03</i>Call<b class="tab-live" id="tab-call-live">LIVE</b></a>
+    <a href="#/system" data-route="system"><i>04</i>System</a>
+    <span class="tab-ink" id="tab-ink"></span>
+  </nav>
+  <div class="inc-pill" id="inc-pill"><span class="dot"></span><span id="inc-pill-text">Connecting…</span></div>
+  <div class="top-right">
+    <span class="conn" id="conn" title="Stream"><span class="dot"></span><span id="conn-text">—</span></span>
+    <span class="mode" id="mode">—</span>
+    <div class="clock"><b id="clock-time">--:--:--</b><span id="clock-date">—</span></div>
+  </div>
+</header>
+
+<section class="fuse" id="fuse">
+  <div class="fuse-clock"><span class="lbl">Incident clock</span><b id="fuse-t">T+00:00</b></div>
+  <ol class="fuse-states" id="fuse-states"></ol>
+  <div class="kpis" id="kpis">
+    <div class="kpi"><span>Cameras</span><b id="k-cams">—</b></div>
+    <div class="kpi"><span>Screened</span><b id="k-screened">—</b></div>
+    <div class="kpi hot"><span>Escalated</span><b id="k-escalated">—</b></div>
+    <div class="kpi"><span>p95 latency</span><b id="k-p95">—</b></div>
+    <div class="kpi"><span>Tokens</span><b id="k-tokens">—</b></div>
+  </div>
+</section>
+
+<main id="pages">
+
+<!-- ============ LIVE OPS ============ -->
+<section class="page" id="page-live" data-route="live">
+  <div class="live-grid">
+    <div class="live-left">
+      <div class="panel hero" id="hero">
+        <div class="hero-single" id="hero-single">
+          <div class="cam stage" id="hero-cam" data-cam-role="hero"></div>
+        </div>
+        <div class="hero-all" id="hero-all"></div>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="live-right">
+      <div class="panel inc-card" id="inc-card"></div>
+      <div class="panel map-panel">
+        <div class="ph"><h3>Site · subject path <em id="map-path">—</em></h3><span class="meta" id="map-meta">—</span></div>
+        <div class="map-wrap" id="map-live"></div>
+      </div>
+      <div class="panel call-mini" id="call-mini"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EVIDENCE ============ -->
+<section class="page" id="page-evidence" data-route="evidence">
+  <div class="ev-head">
+    <div>
+      <div class="eyebrow" id="ev-eyebrow">Why Sentinel acted</div>
+      <h1 id="ev-title">No incident yet</h1>
+    </div>
+    <div class="ev-badges" id="ev-badges"></div>
+  </div>
+  <div class="ev-grid">
+    <div class="panel ev-frame"><div class="cam stage" id="ev-cam"></div></div>
+    <div class="panel ev-lens"><div class="cam lens" id="ev-lens"></div><div class="lens-foot" id="ev-lens-foot"></div></div>
+    <div class="panel ev-class" id="ev-class"></div>
+    <div class="panel ev-chain" id="ev-chain"></div>
+    <div class="panel ev-timeline"><div class="ph"><h3>State timeline</h3><span class="meta" id="ev-tl-count">—</span></div><ol class="tl" id="ev-tl"></ol></div>
+  </div>
+</section>
+
+<!-- ============ CALL ============ -->
+<section class="page" id="page-call" data-route="call">
+  <div class="call-grid">
+    <div class="panel call-main">
+      <div class="call-head">
+        <div class="call-ico"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div>
+        <div><h2>911 Dispatch · <span id="call-state-word">—</span></h2><p class="sub" id="call-sub">—</p></div>
+        <div class="call-elapsed"><span>Elapsed</span><b id="call-elapsed">—</b></div>
+        <div class="seg" id="call-seg"><span data-s="connecting">connecting</span><span data-s="live">live</span><span data-s="ended">ended</span></div>
+      </div>
+      <svg class="wave big" id="wave-big" preserveAspectRatio="none"></svg>
+      <div class="transcript" id="transcript"></div>
+    </div>
+    <div class="call-side">
+      <div class="panel ground">
+        <div class="ph"><h3>Grounding · what the cameras show now</h3><span class="meta" id="ground-meta">—</span></div>
+        <div class="cam stage" id="call-cam"></div>
+      </div>
+      <div class="panel handoffs"><div class="ph"><h3>Handoffs spoken to dispatcher</h3><span class="meta" id="handoff-count">—</span></div><div id="handoff-track"></div></div>
+      <div class="panel brief" id="call-brief"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SYSTEM ============ -->
+<section class="page" id="page-system" data-route="system">
+  <div class="sys-head">
+    <div><div class="eyebrow" id="sys-eyebrow">System</div><h1 id="sys-title">—</h1></div>
+    <div class="sys-kpis" id="sys-kpis"></div>
+  </div>
+  <div class="panel sys-pipe">
+    <div class="ph"><h3>Live pipeline <em>packets = work in flight</em></h3><span class="legend"><i class="lg-ok"></i>idle / ok <i class="lg-busy"></i>active <i class="lg-bad"></i>offline</span></div>
+    <div id="sys-diagram"></div>
+  </div>
+  <div class="sys-bottom">
+    <div class="panel"><div class="ph"><h3>p95 latency · since page opened</h3><span class="meta" id="lat-meta">—</span></div><div id="lat-chart" class="chart"></div></div>
+    <div class="panel"><div class="ph"><h3>Funnel · this session</h3><span class="meta">every stage counted by the backend</span></div><div id="funnel"></div></div>
+    <div class="panel"><div class="ph"><h3>Tokens · Muse Spark Open</h3><span class="meta" id="tok-meta">—</span></div><div id="tokens"></div></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="strip" id="strip"></footer>
+
+<dialog id="dlg"><form method="dialog" id="dlg-form"></form></dialog>
+<div id="toasts" aria-live="polite"></div>
+<div id="video-pool" aria-hidden="true"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+{
+  "site": {
+    "name": "Building A",
+    "spoken_name": "Building A",
+    "type": "Campus building",
+    "address": "One Washington Square, San Jose, CA 95192",
+    "timezone": "America/Los_Angeles"
+  },
+  "cameras": [
+    {
+      "camera_id": "cam-01",
+      "legacy_id": "CAM-01",
+      "seville_label": "CAM5",
+      "name": "Building A / Ground-floor lobby",
+      "location": "Ground-floor lobby entrance",
+      "address": "Building A, One Washington Square, San Jose, CA 95192",
+      "building": "Building A",
+      "floor": "ground",
+      "coordinates": [
+        37.333553,
+        -121.881899
+      ],
+      "entrances": [
+        "Ground-floor lobby entrance"
+      ],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "spoken_location": "the ground-floor lobby",
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is entering the ground-floor lobby with a visible long firearm",
+        "direction": "moving from the lobby toward the east corridor",
+        "unknowns": [
+          "identity",
+          "intent",
+          "injuries",
+          "exact firearm type"
+        ]
+      },
+      "neighbors": [
+        {
+          "camera_id": "cam-02",
+          "bearing": "ESE"
+        },
+        {
+          "camera_id": "cam-03",
+          "bearing": "WSW"
+        }
+      ],
+      "adjacency": [
+        "cam-02",
+        "cam-03"
+      ],
+      "on_wall": true,
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM01_lobby_entrance_IN_then_OUT_339s.mp4",
+      "media_root": "media/cctv_3cam"
+    },
+    {
+      "camera_id": "cam-02",
+      "legacy_id": "CAM-02",
+      "seville_label": "CAM1",
+      "name": "Building A / East corridor",
+      "location": "Ground-floor east corridor",
+      "address": "Building A, One Washington Square, San Jose, CA 95192",
+      "building": "Building A",
+      "floor": "ground",
+      "coordinates": [
+        37.33358,
+        -121.88182
+      ],
+      "entrances": [
+        "East corridor doors"
+      ],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "spoken_location": "the east corridor",
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is moving through the east corridor with a visible long firearm",
+        "direction": "moving toward the west corridor",
+        "unknowns": [
+          "identity",
+          "intent",
+          "injuries",
+          "exact firearm type"
+        ]
+      },
+      "neighbors": [
+        {
+          "camera_id": "cam-01",
+          "bearing": "WNW"
+        },
+        {
+          "camera_id": "cam-03",
+          "bearing": "W"
+        }
+      ],
+      "adjacency": [
+        "cam-01",
+        "cam-03"
+      ],
+      "on_wall": true,
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM02_hallway_east_IN_then_OUT_339s.mp4",
+      "media_root": "media/cctv_3cam"
+    },
+    {
+      "camera_id": "cam-03",
+      "legacy_id": "CAM-03",
+      "seville_label": "CAM7",
+      "name": "Building A / West corridor",
+      "location": "Ground-floor west corridor and stairwell",
+      "address": "Building A, One Washington Square, San Jose, CA 95192",
+      "building": "Building A",
+      "floor": "ground",
+      "coordinates": [
+        37.33352,
+        -121.88197
+      ],
+      "entrances": [
+        "West stairwell exit"
+      ],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest Building A entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "spoken_location": "the west corridor near the stairwell",
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is moving through the west corridor near the stairwell with a visible long firearm",
+        "direction": "current direction is not confirmed",
+        "unknowns": [
+          "identity",
+          "intent",
+          "injuries",
+          "exact firearm type"
+        ]
+      },
+      "neighbors": [
+        {
+          "camera_id": "cam-01",
+          "bearing": "ENE"
+        },
+        {
+          "camera_id": "cam-02",
+          "bearing": "E"
+        }
+      ],
+      "adjacency": [
+        "cam-01",
+        "cam-02"
+      ],
+      "on_wall": true,
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM03_hallway_west_IN_then_OUT_339s.mp4",
+      "media_root": "media/cctv_3cam"
+    }
+  ]
+}

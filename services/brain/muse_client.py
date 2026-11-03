@@ -1,0 +1,397 @@
+"""Muse Spark Open client (Meta, hosted on Baseten's OpenAI-compatible API).
+
+Kept under the historical MuseClient name so every caller stays unchanged.
+
+Prefill with frames + factual metadata only
+(track_id, camera_id, peak timestamp, target person).
+Never send the router's scores to the VLM.
+
+Offline fallback classify works without network. Live path posts 16 frames to /v1/chat/completions
+and reads a single six-class token (Completion A).
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+from io import BytesIO
+from typing import Any
+
+from contracts import IncidentClass
+from services import activity
+
+from services.usage import add as usage_add
+
+
+DEFAULT_BASE_URL = os.environ.get("MUSE_BASE_URL", "https://inference.baseten.co")
+DEFAULT_MODEL = os.environ.get("MUSE_MODEL", "meta-models/muse-spark-open-1026")
+API_KEY = os.environ.get("BASETEN_API_KEY", "")
+# Muse is a reasoning model: ~1,000 hidden reasoning tokens precede the visible answer.
+REASONING_BUDGET = int(os.environ.get("CS_MUSE_MAX_TOKENS", "2500"))
+CLASS_TOKENS = tuple(c.value for c in IncidentClass)
+_MAX_SIDE = 384
+
+
+@dataclass
+class ClassifyResult:
+    class_token: IncidentClass
+    logprob: float
+    forced: bool
+    raw: dict[str, Any] | None = None
+
+
+@dataclass
+class DescribeResult:
+    """Completion B — person appearance only.
+
+    Location stays from camera_map (invariant). Never trust the model for address.
+    """
+
+    person_description: str
+    forced: bool
+    raw: dict[str, Any] | None = None
+
+
+class MuseClient:
+    def __init__(
+        self,
+        base_url: str = DEFAULT_BASE_URL,
+        *,
+        forced: bool = False,
+        timeout_s: float = 90.0,
+        model: str = DEFAULT_MODEL,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.forced = forced
+        self.timeout_s = timeout_s
+        self.model = model
+
+    def health(self) -> bool:
+        if self.forced:
+            return True
+        for path in ("/v1/models", "/health"):
+            try:
+                req = urllib.request.Request(
+                    self.base_url + path, method="GET", headers=_auth_headers()
+                )
+                with urllib.request.urlopen(req, timeout=min(self.timeout_s, 5.0)) as resp:
+                    if 200 <= resp.status < 300:
+                        return True
+            except (urllib.error.URLError, TimeoutError, ValueError):
+                continue
+        return False
+
+    def classify_forced(self, class_token: IncidentClass) -> ClassifyResult:
+        """Offline fallback and drill path — no network."""
+        return ClassifyResult(class_token=class_token, logprob=0.0, forced=True)
+
+    def classify(
+        self,
+        *,
+        class_token_forced: IncidentClass | None = None,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        person_hint: str = "",
+        frames: list[Any] | None = None,
+    ) -> ClassifyResult:
+        """Completion A: single token from the six-class set.
+
+        Live path: 16 frames + facts, never router scores.
+        Forced path: offline fallback. If both frames and forced=True, forced wins
+        so check.py stays network-free.
+        """
+        has_frames = bool(frames)
+        if self.forced or (class_token_forced is not None and not has_frames):
+            token = class_token_forced or IncidentClass.BENIGN
+            return self.classify_forced(token)
+        if not has_frames:
+            raise NotImplementedError(
+                "live Muse classify needs the 16 sampled frames over the wire; "
+                "use forced=True / class_token_forced until vision supplies frames "
+                f"(frames_provided={frames is not None})"
+            )
+        return self._classify_live(
+            track_id=track_id,
+            camera_id=camera_id,
+            peak_ts_iso=peak_ts_iso,
+            person_hint=person_hint,
+            frames=list(frames or []),
+        )
+
+    def describe(
+        self,
+        *,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        frames: list[Any] | None = None,
+        class_token: IncidentClass | None = None,
+    ) -> DescribeResult:
+        """Completion B: short person description JSON (no location inventing)."""
+        if self.forced or not frames:
+            hint = "Adult, clothing not confirmed from camera."
+            if class_token is IncidentClass.WEAPON:
+                hint = "Adult carrying a handgun; clothing being confirmed."
+            return DescribeResult(person_description=hint, forced=True)
+        return self._describe_live(
+            track_id=track_id,
+            camera_id=camera_id,
+            peak_ts_iso=peak_ts_iso,
+            frames=list(frames),
+            class_token=class_token,
+        )
+
+    def answer_dispatcher(self, facts: dict[str, Any], question: str) -> str:
+        """Answer an unmatched dispatcher question from supplied facts only."""
+        if self.forced:
+            return "The cameras do not confirm that detail."
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Sentinel AI, a campus camera system, speaking to a 911 dispatcher. "
+                        "Answer in one short sentence using only the supplied facts. "
+                        "Never guess identity, intent, injuries, or unseen details. "
+                        "If the facts do not answer the question, say: "
+                        "The cameras do not confirm that detail."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {"current_camera_facts": facts, "dispatcher_question": question},
+                        separators=(",", ":"),
+                    ),
+                },
+            ],
+            "max_tokens": REASONING_BUDGET,
+            "temperature": 0.0,
+        }
+        raw = self._post_json("/v1/chat/completions", payload)
+        text = str(
+            (((raw.get("choices") or [{}])[0].get("message") or {}).get("content"))
+            or ""
+        ).strip()
+        return text[:400] or "The cameras do not confirm that detail."
+
+    def _describe_live(
+        self,
+        *,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        frames: list[Any],
+        class_token: IncidentClass | None,
+    ) -> DescribeResult:
+        cls = class_token.value if class_token else "UNKNOWN"
+        facts = (
+            f"camera_id={camera_id} track_id={track_id} "
+            f"peak_ts={peak_ts_iso} class_token={cls} n_frames={len(frames)}"
+        )
+        text = (
+            "Describe ONLY the visible person in this campus security clip. "
+            f"Facts: {facts}. "
+            "Reply with ONE JSON object and no other text: "
+            '{"person_description":"<short visual description, max 20 words>"}. '
+            "Do not invent a street address or building name. "
+            "Mention anything the person holds. The last image may be an enlarged crop of this person. "
+            "If unsure about clothing or objects, say so briefly."
+        )
+        content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+        for img in _sample(frames):
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _jpeg_data_url(img)},
+                }
+            )
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": REASONING_BUDGET,
+            "temperature": 0.0,
+        }
+        raw = self._post_json("/v1/chat/completions", payload)
+        person = _parse_person_description(raw)
+        return DescribeResult(person_description=person, forced=False, raw=raw)
+
+    def _classify_live(
+        self,
+        *,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        person_hint: str,
+        frames: list[Any],
+    ) -> ClassifyResult:
+        facts = (
+            f"camera_id={camera_id} track_id={track_id} "
+            f"peak_ts={peak_ts_iso} target_person={person_hint or 'unspecified'} "
+            f"n_frames={len(frames)}"
+        )
+        # Six-class only. No FIRE. No router scores / fused_prob.
+        text = (
+            "Classify this campus security clip. Facts only: "
+            f"{facts}. Reply with ONE JSON object and no other text: "
+            '{"label": "<one of ' + "|".join(CLASS_TOKENS) + '>", "confidence": <0.0-1.0>}. '
+            "WEAPON means a visible gun, knife or similar weapon is carried."
+        )
+        content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+        for img in _sample(frames):
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _jpeg_data_url(img)},
+                }
+            )
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": REASONING_BUDGET,
+            "temperature": 0.0,
+        }
+        raw = self._post_json("/v1/chat/completions", payload)
+        if not _content(raw):  # reasoning used the whole budget: retry once before giving up
+            raw = self._post_json("/v1/chat/completions", payload)
+        if not _content(raw):
+            raise RuntimeError("Muse returned no classification")  # caller falls back to the rule label
+        token, logprob = _parse_class_token(raw)
+        reply = str((((raw.get("choices") or [{}])[0].get("message") or {}).get("content")) or "")
+        print(f"[muse] classify -> {token.value} ({reply[:160]!r}) hint={person_hint[:80]!r}", flush=True)
+        return ClassifyResult(
+            class_token=token, logprob=logprob, forced=False, raw=raw
+        )
+
+    def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        banned = ("router_score", "fused_prob")
+        blob = json.dumps(payload)
+        for b in banned:
+            if b in blob:
+                raise ValueError(f"refusing to send {b} to Muse")
+        body = blob.encode("utf-8")
+        req = urllib.request.Request(
+            self.base_url + path,
+            data=body,
+            method="POST",
+            headers={"Content-Type": "application/json", **_auth_headers()},
+        )
+        with activity.busy("muse"), urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+        # usage.tick: every real call (offline fallback paths never post here).
+        use = raw.get("usage") if isinstance(raw, dict) else None
+        use = use if isinstance(use, dict) else {}
+        usage_add(
+            self.model,
+            requests=1,
+            live=1,
+            tokens_in=int(use.get("prompt_tokens") or 0),
+            tokens_out=int(use.get("completion_tokens") or 0),
+        )
+        return raw
+
+
+def _jpeg_data_url(image: Any) -> str:
+    try:
+        import numpy as np
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError("live classify needs numpy and Pillow") from exc
+    arr = np.asarray(image)
+    if arr.ndim == 2:
+        arr = np.stack([arr, arr, arr], axis=-1)
+    if arr.ndim != 3 or arr.shape[2] < 3:
+        raise ValueError("frame must be HxWx3")
+    arr = arr[:, :, :3]
+    if arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype("uint8")
+    h, w = arr.shape[:2]
+    m = max(h, w)
+    im = Image.fromarray(arr)
+    if m > _MAX_SIDE:
+        s = _MAX_SIDE / m
+        im = im.resize((max(1, int(w * s)), max(1, int(h * s))))
+    buf = BytesIO()
+    im.save(buf, format="JPEG", quality=80)
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
+
+
+MAX_IMAGES = 8  # Baseten Muse limit: "Too many images: 16 (max 8)"
+
+
+def _sample(frames: list[Any]) -> list[Any]:
+    """Evenly spaced subset of the clip that fits the provider's image cap."""
+    if len(frames) <= MAX_IMAGES:
+        return frames
+    step = len(frames) / MAX_IMAGES
+    return [frames[int(i * step)] for i in range(MAX_IMAGES)]
+
+
+def _content(raw: dict[str, Any]) -> str:
+    return str((((raw.get("choices") or [{}])[0].get("message") or {}).get("content")) or "").strip()
+
+
+def _auth_headers() -> dict[str, str]:
+    return {"Authorization": f"Api-Key {API_KEY}"} if API_KEY else {}
+
+
+def _parse_class_token(raw: dict[str, Any]) -> tuple[IncidentClass, float]:
+    """Muse returns {"label", "confidence"}; logprob = ln(confidence) (model-stated, not token logprobs)."""
+    import math
+
+    choice = (raw.get("choices") or [{}])[0]
+    text = str((choice.get("message") or {}).get("content") or "")
+    start, end = text.find("{"), text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            obj = json.loads(text[start : end + 1])
+            label = str(obj.get("label", "")).upper()
+            conf = float(obj.get("confidence", 0.1))
+            if label in CLASS_TOKENS:
+                return IncidentClass(label), math.log(min(1.0, max(1e-3, conf)))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    cleaned = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in text)
+    words = [w.upper() for w in cleaned.split() if w]
+    token = IncidentClass.BENIGN
+    for w in words:
+        if w in CLASS_TOKENS:
+            token = IncidentClass(w)
+            break
+    logprob = -2.3  # ~0.10 if the model did not emit a known token
+    lp = ((choice.get("logprobs") or {}).get("content") or [{}])
+    if lp and isinstance(lp[0], dict) and "logprob" in lp[0]:
+        try:
+            logprob = float(lp[0]["logprob"])
+        except (TypeError, ValueError):
+            pass
+    return token, logprob
+
+
+def _parse_person_description(raw: dict[str, Any]) -> str:
+    choice = (raw.get("choices") or [{}])[0]
+    text = str((choice.get("message") or {}).get("content") or "").strip()
+    if not text:
+        return "unknown"
+    # Prefer JSON object if present.
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            obj = json.loads(text[start : end + 1])
+            if isinstance(obj, dict):
+                desc = obj.get("person_description") or obj.get("description")
+                if isinstance(desc, str) and desc.strip():
+                    return desc.strip()[:200]
+        except json.JSONDecodeError:
+            pass
+    # Fallback: first line of prose, strip fences.
+    line = text.splitlines()[0].strip().strip("`")
+    return (line or "unknown")[:200]
